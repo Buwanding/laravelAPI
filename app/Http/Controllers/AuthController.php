@@ -1,32 +1,32 @@
-namespace App\Http\Controllers;
+<?php
 
+namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
+    
     protected $model;
 
-    public function __construct()
-    {
+    public function __construct(){
         $this->model = new User();
     }
   
     public function login(Request $request)
     {
-        $request->validate([
+        $credentials = $request->validate([
             'email' => 'required|email',
-            'password' => 'required|string|min:6', 
+            'password' => 'required|string'
         ]);
 
-        try {
-            $credentials = $request->only('email', 'password');
-
-            if (!Auth::attempt($credentials)) {
-                return response(['message' => "Invalid credentials"], 401);
+        try{
+            
+            if(!Auth::attempt($credentials)){
+                return response(['message' => "Account is not registered"], 200);
             } 
 
             $user = $this->model->where('email', $request->email)->first();            
@@ -34,28 +34,31 @@ class AuthController extends Controller
 
             return response(['token' => $token], 200);
 
-        } catch (\Exception $e) {
+        }catch(\Exception $e){
             return response(['message' => $e->getMessage()], 400);
         }
     }
 
     public function register(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|confirmed|min:6', 
-        ]);
-
+    { // Validation
         try {
-            $data = $request->all();
-            $data['password'] = Hash::make($data['password']); // Hash the password
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password), // Hash the password
+            ]);
 
-            $this->model->create($data);
-
-            return response(['message' => "Successfully created"], 201);
-        } catch (\Exception $e) {
-            return response(['message' => $e->getMessage()], 400);
+            return response()->json($user, 201);
+            return response(['message' => 'User registered successfully', 'user' => $user], 201);
+        } catch (\Throwable $e) {
+            //throw $th;
+           
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500); 
+            return response("Errors");
         }
     }
+  
 }
